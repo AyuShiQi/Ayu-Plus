@@ -5,7 +5,7 @@ import { activeFn, deps } from './register'
 import type { EffectFn } from './register'
 
 // 副作用函数储存追踪
-const track = (target: object, key: any): void => {
+export const track = (target: object, key: any): void => {
     if(!activeFn) return
     // 找obj
     let dep = deps.get(target)
@@ -17,7 +17,7 @@ const track = (target: object, key: any): void => {
     activeFn.deps.push(bucket)
 }
 // 触发副作用函数
-const trigger = (target: object, key: any): void => {
+export const trigger = (target: object, key: any): void => {
     let dep = deps.get(target)
     if(!dep) return
     let bucket = dep.get(key)
@@ -25,7 +25,10 @@ const trigger = (target: object, key: any): void => {
     // 为了保证当前迭代是准确的(因为底层正在进行删除bucket中对应fn的过程)，复制一份新的bucket集合
     const nowBucket = new Set<EffectFn>(bucket)
     nowBucket && nowBucket.forEach(item => {
-        if(item !== activeFn) item()
+        if(item === activeFn) return
+        if(item.options.scheduler)
+        item.options.scheduler(item)
+        else item()
     })
 }
 // reactive的实现
