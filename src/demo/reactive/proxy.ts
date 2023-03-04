@@ -1,7 +1,7 @@
 /**
  * 这里是数据劫持流程
  */
-import { activeFn, deps } from './register'
+import { activeFn, deps, execute } from './register'
 import type { EffectFn } from './register'
 
 // 副作用函数储存追踪
@@ -40,6 +40,8 @@ export const reactive = (data: object): object => {
             return Reflect.get(target, key)
         },
         set(target: object, key: any, value: any): boolean {
+            // 触发对应watch
+            execute(target, key, value)
             const res = Reflect.set(target, key, value)
             if(!res) return false
             trigger(target, key)

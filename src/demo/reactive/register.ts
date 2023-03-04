@@ -75,3 +75,17 @@ export const computed = (fn: any): any => {
 
   return obj
 }
+
+
+const watchDep = new WeakMap<object, any>()
+export const watched = (obj: object,fn: any) => {
+  // 新旧value
+  watchDep.set(obj, fn)
+}
+
+export const execute = (obj: object, key: string, newValue: any) => {
+  const watch = watchDep.get(obj)
+  if(!watch) return
+  const oldValue = Reflect.get(obj, key)
+  watch(oldValue, newValue)
+} 
