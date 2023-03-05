@@ -77,15 +77,47 @@ export const computed = (fn: any): any => {
 }
 
 
-const watchDep = new WeakMap<object, any>()
-export const watched = (obj: object,fn: any) => {
-  // 新旧value
-  watchDep.set(obj, fn)
+export const watched = (obj: any,fn: any, options: any = {}) => {
+  let getter: () => void
+  if(typeof obj === 'function') {
+    getter = obj
+  }
+  else {
+    getter = () => traverse(obj)
+  }
+  
+  const onInvalidate = getInvalidate()
+  let oldValue: any,newValue: any
+  const effectFn = effect(() => getter(), {
+    lazy: true,
+    // 因为是自己的调用器，所以并不会先去执行effectFn
+    scheduler() {
+      newValue = effectFn()
+      fn(newValue, oldValue, onInvalidate())
+      oldValue = newValue
+    }
+  })// 获得那个effectFn，执行它会返回那个值
+  oldValue = effectFn()
+  if(options.immediate) fn(undefined, oldValue)
 }
 
-export const execute = (obj: object, key: string, newValue: any) => {
-  const watch = watchDep.get(obj)
-  if(!watch) return
-  const oldValue = Reflect.get(obj, key)
-  watch(oldValue, newValue)
-} 
+
+const traverse = (val: any, seen = new Set<any>()): void => {
+    if(typeof val !== 'object' || val === null || seen.has(val)) return
+    seen.add(val)
+    for(const k of val) {
+      traverse(k)
+    }
+}
+
+const getInvalidate = () => {
+  let lastInvalid: any
+  return () => {
+    const onInvalidate = {
+      value: false,
+    }
+    if(lastInvalid) lastInvalid.value = true
+    lastInvalid = onInvalidate
+    return onInvalidate
+  }
+}
