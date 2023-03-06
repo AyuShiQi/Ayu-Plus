@@ -53,8 +53,10 @@ export const reactive = (data: object): object => {
         set(target: object, key: any, value: any, receiver: object): boolean {
             const type = Reflect.has(target, key) ? State.SET : State.ADD
             const res = Reflect.set(target, key, value, receiver)
-            if(res) trigger(target, key, type)
-            return true
+            const oldValue = Reflect.get(target, key, receiver)
+            // 如果和老值一样，就不重新触发了
+            if(res && !Object.is(oldValue, value)) trigger(target, key, type)
+            return res
         },
         // 用来劫持in、Object.has操作
         has(target: object, key: any): boolean {
