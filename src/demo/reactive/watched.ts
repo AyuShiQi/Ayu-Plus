@@ -32,7 +32,7 @@ export const watched = (obj: any,fn: any, options: any = {}) => {
         traverse(k)
       }
   }
-  // 用于过期watch（竞态问题）这个实现不是书上的源码
+  // 用于过期watch（竞态问题）这个实现不是书上的源码sd
   const getInvalidate = () => {
     let lastInvalid: any
     return () => {

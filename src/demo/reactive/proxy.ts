@@ -1,7 +1,7 @@
 /**
  * 这里是数据劫持流程
  */
-import { activeFn, deps, effect, effectFnStack } from './register'
+import { activeFn, deps } from './register'
 import type { EffectFn } from './register'
 import State from './state'
 
@@ -42,20 +42,27 @@ export const trigger = (target: object, key: any, type: string = State.SET): voi
 }
 
 // reactive的实现
-export const reactive = (data: object): object => {
+export const reactive = (data: object, isShallow: boolean = false): object => {
     const proxyObj = new Proxy(data, {
-        get(target: object, key: any, receiver: object): object {
+        get(target: object, key: any, receiver: object & {raw: object}): object {
+            // 忽略读取raw的操作，不需要副作用函数添加进raw的执行名单桶中
+            if(key === 'raw') return target
             // 找寻deps的过程
             track(target, key)
             // receiver用来修正get和set函数的this指向
-            return Reflect.get(target, key, receiver)
+            const res = Reflect.get(target, key, receiver)
+            if(!isShallow && typeof res === 'object' && res !== null) return reactive(data, isShallow)
+            return res
         },
-        set(target: object, key: any, value: any, receiver: object): boolean {
+        set(target: object, key: any, value: any, receiver: object & {raw: object}): boolean {
             const type = Reflect.has(target, key) ? State.SET : State.ADD
-            const res = Reflect.set(target, key, value, receiver)
             const oldValue = Reflect.get(target, key, receiver)
-            // 如果和老值一样，就不重新触发了
-            if(res && !Object.is(oldValue, value)) trigger(target, key, type)
+            const res = Reflect.set(target, key, value, receiver)
+            // 如果target是reciver的原型才去触发，否则在原型上可能会进行另一次触发
+            if(receiver.raw === target) {
+                // 如果和老值一样，就不重新触发了
+                if(res && !Object.is(oldValue, value)) trigger(target, key, type)
+            }
             return res
         },
         // 用来劫持in、Object.has操作
