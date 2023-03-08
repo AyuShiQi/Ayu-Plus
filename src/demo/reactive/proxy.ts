@@ -41,20 +41,25 @@ export const trigger = (target: object, key: any, type: string = State.SET): voi
     })
 }
 
-// reactive的实现
-export const reactive = (data: object, isShallow: boolean = false): object => {
+const createReactive = (data: object, isShallow: boolean = false, isReadonly = false): object => {
     const proxyObj = new Proxy(data, {
         get(target: object, key: any, receiver: object & {raw: object}): object {
             // 忽略读取raw的操作，不需要副作用函数添加进raw的执行名单桶中
             if(key === 'raw') return target
             // 找寻deps的过程
-            track(target, key)
+            if(!isReadonly) track(target, key)
             // receiver用来修正get和set函数的this指向
             const res = Reflect.get(target, key, receiver)
-            if(!isShallow && typeof res === 'object' && res !== null) return reactive(data, isShallow)
+            if(!isShallow && typeof res === 'object' && res !== null) {
+                return createReactive(data, isShallow, isReadonly)
+            }
             return res
         },
         set(target: object, key: any, value: any, receiver: object & {raw: object}): boolean {
+            if(isReadonly) {
+                console.log(`属性${key}为只读`)
+                return true
+            }
             const type = Reflect.has(target, key) ? State.SET : State.ADD
             const oldValue = Reflect.get(target, key, receiver)
             const res = Reflect.set(target, key, value, receiver)
@@ -67,15 +72,19 @@ export const reactive = (data: object, isShallow: boolean = false): object => {
         },
         // 用来劫持in、Object.has操作
         has(target: object, key: any): boolean {
-            track(target, key)
+            if(!isReadonly) track(target, key)
             return Reflect.has(target, key)
         },
         // 拦截for in操作
         ownKeys(target: object): (string | symbol)[] {
-            track(target, ITERATE_KEY)
+            if(!isReadonly) track(target, ITERATE_KEY)
             return Reflect.ownKeys(target)
         },
         deleteProperty(target: object, key: string): boolean {
+            if(isReadonly) {
+                console.log(`属性${key}为只读`)
+                return true
+            }
             const has = Reflect.has(target, key)
             const res = Reflect.deleteProperty(target, key)
             if(has && res) trigger(target, key, State.DELETE)
@@ -83,4 +92,24 @@ export const reactive = (data: object, isShallow: boolean = false): object => {
         }
     })
     return proxyObj
+}
+
+// reactive的实现
+export const reactive = (data: object): object => {
+    return createReactive(data)
+}
+
+// 浅层响应
+export const shallowReactive = (data: object): object => {
+    return createReactive(data, true)
+}
+
+// 深层只读
+export const readonly = (data: object) => {
+    return createReactive(data, false, true)
+}
+
+// 深层只读
+export const shallowReadonly = (data: object) => {
+    return createReactive(data, true, true)
 }

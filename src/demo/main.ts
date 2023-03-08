@@ -1,5 +1,6 @@
 import { reactive } from './reactive/proxy'
 import { effect } from './reactive/register'
+import { computed } from './reactive/computed'
 
 
 const data = {
@@ -18,6 +19,12 @@ export const run = () => {
     effect(beEff.bind(this, obj))
     effect(print.bind(this, obj))
     effect(beForIn.bind(this, obj))
+    const ac = computed(() => {
+        return 'computed' + (obj as any).text + (obj as any).two
+    })
+    effect(function lookComputed() {
+        console.log(ac.value)
+    })
     setTimeout(() => {
         (obj as any).text = '第一次变换文本'
     }, 1000)
