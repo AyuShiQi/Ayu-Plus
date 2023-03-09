@@ -1,6 +1,8 @@
 /**
  * 这里是函数的注册流程
  **/
+import { shouldTrack } from './state'
+
 // ts类型
 export type ActiveFn = ((...props: unknown[])=>any)
 export type EffectFn = (() => void) & 
@@ -8,6 +10,7 @@ export type EffectFn = (() => void) &
   deps: Set<EffectFn>[],
   options: any
  }
+
 /**
  * 当前活跃状态副作用函数
  */
@@ -22,9 +25,11 @@ export const deps = new WeakMap<object, Map<string | Symbol, Set<EffectFn>>>()
 export const effect = (fn: ActiveFn, options: any = {}): EffectFn => {
   const effectFn: EffectFn = () => {
     activeFn = effectFn
-    cleanup()
+    // 这个是我自己加的，如果目前不允许追踪，可能会导致一部分副作用函数，只能通过不清理的方式让已经追踪的函数不清除
+    if(shouldTrack.value || shouldTrack.target.has(effectFn)) cleanup()
     effectFnStack.push(activeFn)
-    const res = fn()
+    // 自己加的，如果这个函数是一个不允许追踪函数，那么这一次就不再执行
+    const res = shouldTrack.target.has(effectFn)? undefined : fn()
     effectFnStack.pop()
     activeFn = effectFnStack[effectFnStack.length - 1]
     return res

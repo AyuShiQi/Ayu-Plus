@@ -5,3 +5,8 @@ enum TriggerType{
 }
 
 export default TriggerType
+
+export let shouldTrack = {
+    value: true,
+    target: new Set()
+}

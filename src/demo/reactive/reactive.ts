@@ -3,7 +3,7 @@
  */
 import { activeFn, deps } from './register'
 import type { EffectFn } from './register'
-import State from './state'
+import State, { shouldTrack } from './state'
 import { arrayInstrumentations } from './array'
 
 // 用来标记某个对象的获取key操作属性，用来标记获取key操作的副作用函数
@@ -11,7 +11,7 @@ const ITERATE_KEY = Symbol()
 
 // 副作用函数储存追踪
 export const track = (target: object, key: any): void => {
-    if(!activeFn) return
+    if(!activeFn || !shouldTrack.value) return
     // 找obj
     let dep = deps.get(target)
     if(!dep) deps.set(target, (dep = new Map<string | Symbol, Set<EffectFn>>()))
@@ -24,6 +24,7 @@ export const track = (target: object, key: any): void => {
 
 // 触发副作用函数
 export const trigger = (target: object, key: any, type: string = State.SET, newValue?: any): void => {
+    // console.log('trigger', key)
     let dep = deps.get(target)
     if(!dep) return
     let bucket = dep.get(key)
@@ -33,13 +34,13 @@ export const trigger = (target: object, key: any, type: string = State.SET, newV
     const nowBucket = new Set<EffectFn>(bucket)
     if(type === State.ADD || type === State.DELETE) {
         dep.get(ITERATE_KEY)?.forEach(effectFn => {
-            if(effectFn === activeFn) nowBucket.add(effectFn)
+            if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
     }
     // 如果是添加属性，那么要吧数组的length相关副作用也添加进来重新执行
-    if(type === State.ADD && Array.isArray(target)) {
+    if((type === State.ADD || type === State.DELETE) && Array.isArray(target)) {
         dep.get('length')?.forEach(effectFn => {
-            if(effectFn === activeFn) nowBucket.add(effectFn)
+            if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
     }
     // 如果是更新的数组长度，那么大于数组长度值的被调用都要重新执行
@@ -47,7 +48,7 @@ export const trigger = (target: object, key: any, type: string = State.SET, newV
         dep.forEach((effects, key) => {
             if(key >= newValue) {
                 effects.forEach(effectFn => {
-                    if(effectFn === activeFn) nowBucket.add(effectFn)
+                    if(effectFn !== activeFn) nowBucket.add(effectFn)
                 })
             }
         })
@@ -69,7 +70,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
         get(target: object, key: any, receiver: object & {raw: object}): object {
             // 忽略读取raw的操作，不需要副作用函数添加进raw的执行名单桶中
             if(key === 'raw') return target
-            if(!isShallow && arrayInstrumentations.hasOwnProperty(key)) {
+            if(Array.isArray(target) && arrayInstrumentations.hasOwnProperty(key)) {
                 return Reflect.get(arrayInstrumentations, key, receiver)
             }
             // 找寻deps的过程
@@ -95,6 +96,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
             const res = Reflect.set(target, key, value, receiver)
             // 如果target是reciver的原型才去触发，否则在原型上可能会进行另一次触发
             if(receiver.raw === target) {
+                // console.log('raw: ', key, res, oldValue, value, !Object.is(oldValue, value))
                 // 如果和老值一样，就不重新触发了
                 if(res && !Object.is(oldValue, value)) trigger(target, key, type, value) // 把新值传递过去
             }
@@ -107,7 +109,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
         },
         // 拦截for in操作
         ownKeys(target: object): (string | symbol)[] {
-            if(!isReadonly) 
+            if(!isReadonly)
                 track(target, Array.isArray(target)? 'length' : ITERATE_KEY)
             return Reflect.ownKeys(target)
         },

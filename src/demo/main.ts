@@ -13,39 +13,71 @@ const data = {
     }
 }
 
+const ar: number[] = [1]
+
 export const run = () => {
+    const arr: any = reactive(ar)
     const obj = reactive(data)
-    effect(printName.bind(this, obj))
-    effect(beEff.bind(this, obj))
-    effect(print.bind(this, obj))
-    effect(beForIn.bind(this, obj))
-    const ac = computed(() => {
-        return 'computed' + (obj as any).text + (obj as any).two
+    // effect(printName.bind(this, obj))
+    // effect(beEff.bind(this, obj))
+    // effect(print.bind(this, obj))
+    // effect(beForIn.bind(this, obj))
+    // const ac = computed(() => {
+    //     return 'computed' + (obj as any).text + (obj as any).two
+    // })
+    // effect(function () {
+    //     console.log(arr.length)
+    //     console.log(arr)
+    // })
+    effect(function () {
+        for(const i of arr) {
+            console.log(i)
+        }
     })
-    effect(function lookComputed() {
-        console.log(ac.value)
+    effect(function () {
+        console.log('effect1', arr.length)
+        arr.push(233)
     })
+    effect(function () {
+        console.log('effect2', arr.length)
+        arr.push(123)
+    })
+    // setTimeout(() => {
+    //     arr.length = 2
+    // }, 1000)
     setTimeout(() => {
-        (obj as any).text = '第一次变换文本'
-    }, 1000)
-    setTimeout(() => {
-        (obj as any).ok = false
-    }, 2000)
-    setTimeout(() => {
-        (obj as any).text = '第二次变换文本'
+        console.log(arr)
     }, 3000)
     setTimeout(() => {
-        (obj as any).two = true
-    }, 4000)
-    setTimeout(() => {
-        (obj as any).count = 4
-    }, 5000)
-    setTimeout(() => {
-        lookShallow(obj)
-    }, 6000)
-    setTimeout(() => {
-        console.log(obj)
-    }, 7000)
+        arr.length = 1
+    }, 3000)
+    // setTimeout(() => {
+        
+    // }, 1000)
+    // effect(function lookComputed() {
+    //     console.log(ac.value)
+    // })
+    // setTimeout(() => {
+    //     (obj as any).text = '第一次变换文本'
+    // }, 1000)
+    // setTimeout(() => {
+    //     (obj as any).ok = false
+    // }, 2000)
+    // setTimeout(() => {
+    //     (obj as any).text = '第二次变换文本'
+    // }, 3000)
+    // setTimeout(() => {
+    //     (obj as any).two = true
+    // }, 4000)
+    // setTimeout(() => {
+    //     (obj as any).count = 4
+    // }, 5000)
+    // setTimeout(() => {
+    //     lookShallow(obj)
+    // }, 6000)
+    // setTimeout(() => {
+    //     console.log(obj)
+    // }, 7000)
 }
 
 
