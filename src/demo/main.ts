@@ -1,4 +1,4 @@
-import { reactive } from './reactive/proxy'
+import { reactive } from './reactive/reactive'
 import { effect } from './reactive/register'
 import { computed } from './reactive/computed'
 
@@ -43,6 +43,9 @@ export const run = () => {
     setTimeout(() => {
         lookShallow(obj)
     }, 6000)
+    setTimeout(() => {
+        console.log(obj)
+    }, 7000)
 }
 
 

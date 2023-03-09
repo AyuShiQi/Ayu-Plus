@@ -1,4 +1,4 @@
-import { trigger, track } from './proxy'
+import { trigger, track } from './reactive'
 import { effect } from './register'
 
 export const computed = (fn: any): any => {
