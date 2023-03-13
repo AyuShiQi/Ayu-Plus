@@ -26,5 +26,3 @@ export const arrayInstrumentations: any = {};
         return res
     }
 })
-
-console.log(arrayInstrumentations)

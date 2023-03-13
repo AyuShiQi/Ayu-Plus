@@ -17,7 +17,21 @@ const ar: number[] = [1]
 
 export const run = () => {
     const arr: any = reactive(ar)
-    const obj = reactive(data)
+    const obj: any = reactive(data)
+    const map: any = reactive(new Map())
+    const set: any = reactive(new Set());
+    effect(() => {
+        console.log(map.size)
+    })
+    setTimeout(() => {
+        map.set(1,2)
+    }, 1000)
+    setTimeout(() => {
+        map.set(1,3)
+    }, 2000)
+    setTimeout(() => {
+        map.delete(1)
+    }, 2000)
     // effect(printName.bind(this, obj))
     // effect(beEff.bind(this, obj))
     // effect(print.bind(this, obj))
@@ -29,28 +43,28 @@ export const run = () => {
     //     console.log(arr.length)
     //     console.log(arr)
     // })
-    effect(function () {
-        for(const i of arr) {
-            console.log(i)
-        }
-    })
-    effect(function () {
-        console.log('effect1', arr.length)
-        arr.push(233)
-    })
-    effect(function () {
-        console.log('effect2', arr.length)
-        arr.push(123)
-    })
+    // effect(function () {
+    //     for(const i of arr) {
+    //         console.log(i)
+    //     }
+    // })
+    // effect(function () {
+    //     console.log('effect1', arr.length)
+    //     arr.push(233)
+    // })
+    // effect(function () {
+    //     console.log('effect2', arr.length)
+    //     arr.push(123)
+    // })
     // setTimeout(() => {
     //     arr.length = 2
     // }, 1000)
-    setTimeout(() => {
-        console.log(arr)
-    }, 3000)
-    setTimeout(() => {
-        arr.length = 1
-    }, 3000)
+    // setTimeout(() => {
+    //     console.log(arr)
+    // }, 3000)
+    // setTimeout(() => {
+    //     arr.length = 1
+    // }, 3000)
     // setTimeout(() => {
         
     // }, 1000)

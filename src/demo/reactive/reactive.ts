@@ -5,9 +5,12 @@ import { activeFn, deps } from './register'
 import type { EffectFn } from './register'
 import State, { shouldTrack } from './state'
 import { arrayInstrumentations } from './array'
+import { mutableInstrumentations, shallow } from './map'
 
 // 用来标记某个对象的获取key操作属性，用来标记获取key操作的副作用函数
 const ITERATE_KEY = Symbol()
+// 用于标记一个代理对象的原型
+export const RAW_KEY = Symbol()
 
 // 副作用函数储存追踪
 export const track = (target: object, key: any): void => {
@@ -67,9 +70,26 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
         return deepReactiveMap.get(data) as object
     } 
     const proxyObj = new Proxy(data, {
-        get(target: object, key: any, receiver: object & {raw: object}): object {
+        get(target: object, key: any, receiver: object): object {
             // 忽略读取raw的操作，不需要副作用函数添加进raw的执行名单桶中
-            if(key === 'raw') return target
+            // 读取raw，直接将target返回，也就是它的原型
+            if(key === RAW_KEY) return target
+            // 如果是map或者是set
+            if(target instanceof Set || target instanceof Map) {
+                if(key === 'size') {
+                    track(target, ITERATE_KEY)
+                    return Reflect.get(target, key, target)
+                }
+                shallow.set(isShallow)
+                // 稍微谨慎防备一下乱调用的情况，做出何时的提醒
+                if(!Reflect.has(target, key)) {
+                    console.error(`你调用错啦，${target}没有${key}这个方法`)
+                } else if(mutableInstrumentations.hasOwnProperty(key)) {
+                    return Reflect.get(mutableInstrumentations, key, receiver)
+                }
+                return Reflect.get(target, key).bind(target)
+            }
+            // 是数组，且调用某些方法
             if(Array.isArray(target) && arrayInstrumentations.hasOwnProperty(key)) {
                 return Reflect.get(arrayInstrumentations, key, receiver)
             }
@@ -83,7 +103,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
             }
             return res
         },
-        set(target: object, key: any, value: any, receiver: object & {raw: object}): boolean {
+        set(target: object, key: any, value: any, receiver: object & {[RAW_KEY]: object}): boolean {
             if(isReadonly) {
                 console.log(`属性${key}为只读`)
                 return true
@@ -95,7 +115,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
             const oldValue = Reflect.get(target, key, receiver)
             const res = Reflect.set(target, key, value, receiver)
             // 如果target是reciver的原型才去触发，否则在原型上可能会进行另一次触发
-            if(receiver.raw === target) {
+            if(receiver[RAW_KEY] === target) {
                 // console.log('raw: ', key, res, oldValue, value, !Object.is(oldValue, value))
                 // 如果和老值一样，就不重新触发了
                 if(res && !Object.is(oldValue, value)) trigger(target, key, type, value) // 把新值传递过去
