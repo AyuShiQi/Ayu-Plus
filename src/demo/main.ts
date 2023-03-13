@@ -23,25 +23,25 @@ export const run = () => {
     effect(() => {
         console.log(map.size, ' ', set.size)
     })
-    // effect(() => {
-    //     for(const [key, val] of map) {
-    //         console.log(key, val)
-    //     }
-    // })
     effect(() => {
-        for(const key of set) {
-            console.log('set', key)
+        for(const [key, val] of map.entries()) {
+            console.log(key, val)
         }
     })
-    // setTimeout(() => {
-    //     map.set(1,2)
-    // }, 1000)
-    // setTimeout(() => {
-    //     map.set(1,3)
-    // }, 2000)
-    // setTimeout(() => {
-    //     map.set(2, 4)
-    // }, 3000)
+    // effect(() => {
+    //     for(const key of set) {
+    //         console.log('set', key)
+    //     }
+    // })
+    setTimeout(() => {
+        map.set(1,2)
+    }, 1000)
+    setTimeout(() => {
+        map.set(1,3)
+    }, 2000)
+    setTimeout(() => {
+        map.set(2, 4)
+    }, 3000)
     setTimeout(() => {
         set.add(2)
     }, 4000)

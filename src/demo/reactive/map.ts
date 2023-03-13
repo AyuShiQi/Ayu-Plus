@@ -93,5 +93,24 @@ export const mutableInstrumentations = {
                 }
             }
         }
+    },
+    entries: function() {
+        const target = (this as any)[RAW_KEY]
+        const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+        const iter = target[Symbol.iterator]()
+        track(target, ITERATE_KEY)
+
+        return {
+            next() {
+                const { value, done } = iter.next()
+                return {
+                    value: value ? [wrap(value[0]), wrap(value[1])] : value,
+                    done
+                }
+            },
+            [Symbol.iterator]() {
+                return this
+            }
+        }
     }
 };
