@@ -21,17 +21,30 @@ export const run = () => {
     const map: any = reactive(new Map())
     const set: any = reactive(new Set());
     effect(() => {
-        console.log(map.size)
+        console.log(map.size, ' ', set.size)
     })
+    // effect(() => {
+    //     for(const [key, val] of map) {
+    //         console.log(key, val)
+    //     }
+    // })
+    effect(() => {
+        for(const key of set) {
+            console.log('set', key)
+        }
+    })
+    // setTimeout(() => {
+    //     map.set(1,2)
+    // }, 1000)
+    // setTimeout(() => {
+    //     map.set(1,3)
+    // }, 2000)
+    // setTimeout(() => {
+    //     map.set(2, 4)
+    // }, 3000)
     setTimeout(() => {
-        map.set(1,2)
-    }, 1000)
-    setTimeout(() => {
-        map.set(1,3)
-    }, 2000)
-    setTimeout(() => {
-        map.delete(1)
-    }, 2000)
+        set.add(2)
+    }, 4000)
     // effect(printName.bind(this, obj))
     // effect(beEff.bind(this, obj))
     // effect(print.bind(this, obj))

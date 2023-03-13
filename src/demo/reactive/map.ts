@@ -1,4 +1,4 @@
-import { RAW_KEY, track, trigger } from './reactive'
+import { ITERATE_KEY, RAW_KEY, track, trigger } from './reactive'
 import State from './state'
 import { reactive } from './reactive'
 
@@ -13,6 +13,15 @@ export const shallow = {
 }
 
 export const mutableInstrumentations = {
+    add(key: any) {
+        const target = (this as any)[RAW_KEY]
+        const had = target.has(key)
+        const res = target.add(key)
+        if(!had) {
+            trigger(target, key, State.ADD)
+        }
+        return res
+    },
     set(key: any, value: any) {
         const target = (this as any)[RAW_KEY]
         const had = target.has(key)
@@ -50,7 +59,39 @@ export const mutableInstrumentations = {
         }
         return undefined
     },
-    forEach(fn: any) {
-        
+    forEach(cb: any, thisArg: any) {
+        const target = (this as any)[RAW_KEY]
+        const wrap = (res: any) => typeof res === 'object' && isShallow ? reactive(res) : res 
+        track(target, ITERATE_KEY)
+        target.forEach((val: any, key: any) => {
+            cb.call(thisArg, wrap(val), wrap(key), this)
+        })
+    },
+    [Symbol.iterator]() {
+        const target = (this as any)[RAW_KEY]
+        const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+        const iter = target[Symbol.iterator]()
+        track(target, ITERATE_KEY)
+
+        return target instanceof Map ?
+        {
+            next() {
+                const { value, done } = iter.next()
+                return {
+                    value: value ? [wrap(value[0]), wrap(value[1])] : value,
+                    done
+                }
+            }
+        }
+        :
+        {
+            next() {
+                const { value, done } = iter.next()
+                return {
+                    value: value ? wrap(value) : value,
+                    done
+                }
+            }
+        }
     }
 };

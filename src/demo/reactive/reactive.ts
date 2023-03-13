@@ -8,7 +8,7 @@ import { arrayInstrumentations } from './array'
 import { mutableInstrumentations, shallow } from './map'
 
 // 用来标记某个对象的获取key操作属性，用来标记获取key操作的副作用函数
-const ITERATE_KEY = Symbol()
+export const ITERATE_KEY = Symbol()
 // 用于标记一个代理对象的原型
 export const RAW_KEY = Symbol()
 
@@ -35,7 +35,7 @@ export const trigger = (target: object, key: any, type: string = State.SET, newV
     // 为了保证当前迭代是准确的(因为底层正在进行删除bucket中对应fn的过程)，复制一份新的bucket集合
     // 对数组进行处理，当key是length的时候，要判断newValue是是否小于老value
     const nowBucket = new Set<EffectFn>(bucket)
-    if(type === State.ADD || type === State.DELETE) {
+    if(type === State.ADD || type === State.DELETE || target instanceof Map) {
         dep.get(ITERATE_KEY)?.forEach(effectFn => {
             if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
