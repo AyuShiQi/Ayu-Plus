@@ -1,4 +1,4 @@
-import { ITERATE_KEY, RAW_KEY, track, trigger } from './reactive'
+import { ITERATE_KEY, RAW_KEY, MAP_KEY_ITERATE_KEY, track, trigger } from './reactive'
 import State from './state'
 import { reactive } from './reactive'
 
@@ -97,19 +97,60 @@ export const mutableInstrumentations = {
     entries: function() {
         const target = (this as any)[RAW_KEY]
         const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
-        const iter = target[Symbol.iterator]()
+        const iter = target.entries()
         track(target, ITERATE_KEY)
 
         return {
-            next() {
-                const { value, done } = iter.next()
-                return {
-                    value: value ? [wrap(value[0]), wrap(value[1])] : value,
-                    done
-                }
-            },
             [Symbol.iterator]() {
-                return this
+                return {
+                    next() {
+                        const { value, done } = iter.next()
+                        return {
+                            value: value ? [wrap(value[0]), wrap(value[1])] : value,
+                            done
+                        }
+                    }
+                }
+            }
+        }
+    },
+    values: function() {
+        const target = (this as any)[RAW_KEY]
+        const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+        const iter = target.values()
+        track(target, ITERATE_KEY)
+
+        return {
+            [Symbol.iterator]() {
+                return {
+                    next() {
+                        const { value, done } = iter.next()
+                        return {
+                            value: value ? wrap(value) : value,
+                            done
+                        }
+                    }
+                }
+            }
+        }
+    },
+    keys: function() {
+        const target = (this as any)[RAW_KEY]
+        const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+        const iter = target.keys()
+        track(target, MAP_KEY_ITERATE_KEY)
+
+        return {
+            [Symbol.iterator]() {
+                return {
+                    next() {
+                        const { value, done } = iter.next()
+                        return {
+                            value: value ? wrap(value) : value,
+                            done
+                        }
+                    }
+                }
             }
         }
     }

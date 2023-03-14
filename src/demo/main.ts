@@ -28,6 +28,14 @@ export const run = () => {
             console.log(key, val)
         }
     })
+    effect(() => {
+        for(const val of map.values()) {
+            console.log('val', val)
+        }
+        for(const val of map.keys()) {
+            console.log('key', val)
+        }
+    })
     // effect(() => {
     //     for(const key of set) {
     //         console.log('set', key)

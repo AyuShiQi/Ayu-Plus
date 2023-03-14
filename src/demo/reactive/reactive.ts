@@ -11,6 +11,8 @@ import { mutableInstrumentations, shallow } from './map'
 export const ITERATE_KEY = Symbol()
 // 用于标记一个代理对象的原型
 export const RAW_KEY = Symbol()
+// 用来收集values迭代器锁所调用的值
+export const MAP_KEY_ITERATE_KEY = Symbol()
 
 // 副作用函数储存追踪
 export const track = (target: object, key: any): void => {
@@ -37,6 +39,12 @@ export const trigger = (target: object, key: any, type: string = State.SET, newV
     const nowBucket = new Set<EffectFn>(bucket)
     if(type === State.ADD || type === State.DELETE || target instanceof Map) {
         dep.get(ITERATE_KEY)?.forEach(effectFn => {
+            if(effectFn !== activeFn) nowBucket.add(effectFn)
+        })
+    }
+    // 取出和keys迭代器相关的值
+    if((type === State.ADD || type === State.DELETE) && target instanceof Map) {
+        dep.get(MAP_KEY_ITERATE_KEY)?.forEach(effectFn => {
             if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
     }
