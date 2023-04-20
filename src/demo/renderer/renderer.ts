@@ -1,5 +1,8 @@
+const Type = Symbol()
+
+
 export function createRenderer(options: any) {
-    const { createElement, insert, setElementText, patchProps, unmount } = options
+    const { createElement, insert, setElementText, patchProps, unmount, createText, setText } = options
 
     function render(vnode: any,container: any) {
         if(vnode) {
@@ -15,7 +18,7 @@ export function createRenderer(options: any) {
     
     function patch(oldVnode: any, vnode: any, container: any) {
         // 节点tag类型都不一样肯定不能打补丁，需要重新挂载一个新的
-        if(oldVnode.type !== vnode.type) {
+        if(oldVnode?.type !== vnode.type) {
             unmount(oldVnode)
             // 以便后续重新挂载操作
             oldVnode = null
@@ -30,6 +33,16 @@ export function createRenderer(options: any) {
             else {
                 // diff算法入口
                 patchElement(oldVnode, vnode)
+            }
+        } else if (type === Type) {
+            if(!oldVnode) {
+                const el = vnode.el = createText(vnode.child)
+                insert(el, container)
+            } else {
+                const el = vnode.el = oldVnode.el
+                if (vnode.child !== oldVnode.child) {
+                    setText(el, vnode.child)
+                }
             }
         } else {
             // 说明是个组件
@@ -160,4 +173,9 @@ const render = createRenderer({
         const parent = el.parent
         if(parent) parent.removeChild(el)
     },
+    createElement () {},
+    setElementText () {},
+    insert () {},
+    createText () {},
+    setText (el: any, text: string) {}
 })
