@@ -4,8 +4,12 @@
 // import { shouldTrack } from './state'
 
 // ts类型
-export type ActiveFn = ((...props: unknown[])=>any)
-export type EffectFn = (() => void) &
+export type ActiveFn = ((...props: unknown[]) => any)
+export type ActiveOptions = {
+  scheduler?: (fn: ActiveFn) => void,
+  lazy?: boolean
+}
+export type EffectFn = (() => any) &
 { 
   deps: Set<EffectFn>[],
   options: any
@@ -38,7 +42,7 @@ export const deps = new WeakMap<object, Map<string | Symbol, Set<EffectFn>>>()
  * @param options 
  * @returns 
  */
-export const effect = (fn: ActiveFn, options: any = {}): EffectFn => {
+export const effect = (fn: ActiveFn, options: ActiveOptions = {}): EffectFn => {
   const effectFn: EffectFn = () => {
     activeFn = effectFn
     // 这个是我自己加的，如果目前不允许追踪，可能会导致一部分副作用函数，只能通过不清理的方式让已经追踪的函数不清除
