@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "dist",
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
     "lib": ["ESNext", "DOM"],
     "moduleResolution": "Node",
-    "strict": true,
+    "strict": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -13,9 +15,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "paths": {
+      "@ayu-plus/compat": ["packages/ayu-plus-compat/src"],
+      "@ayu-plus/*": ["packages/*/src"],
+      "ayu-plus": ["packages/ayu-plus/src"]
+    }
   },
   "include": [
-    "src"
+    "packages"
   ]
 }
