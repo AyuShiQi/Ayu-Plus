@@ -1,7 +1,8 @@
 /**
  * 这里是函数的注册流程
  **/
-// import { shouldTrack } from './state'
+import { TriggerOpTypes } from './operations'
+import { ITERATE_KEY } from './reactive'
 
 // ts类型
 export type ActiveFn = ((...props: unknown[]) => any)
@@ -95,7 +96,7 @@ export const track = (target: object, key: any): void => {
 }
 
 // 触发副作用函数
-export const trigger = (target: object, key: any, type: string = State.SET, newValue?: any): void => {
+export const trigger = (target: object, key: any, type = TriggerOpTypes.SET, newValue?: any): void => {
     // console.log('trigger', key)
     const dep = deps.get(target)
     if(!dep) return
@@ -104,19 +105,19 @@ export const trigger = (target: object, key: any, type: string = State.SET, newV
     // 为了保证当前迭代是准确的(因为底层正在进行删除bucket中对应fn的过程)，复制一份新的bucket集合
     // 对数组进行处理，当key是length的时候，要判断newValue是是否小于oldValue
     const nowBucket = new Set<EffectFn>(bucket)
-    if(type === State.ADD || type === State.DELETE || target instanceof Map) {
+    if(type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE || target instanceof Map) {
         dep.get(ITERATE_KEY)?.forEach(effectFn => {
             if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
     }
     // 取出和keys迭代器相关的值
-    if((type === State.ADD || type === State.DELETE) && target instanceof Map) {
+    if((type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE) && target instanceof Map) {
         dep.get(MAP_KEY_ITERATE_KEY)?.forEach(effectFn => {
             if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
     }
     // 如果是添加属性，那么要吧数组的length相关副作用也添加进来重新执行
-    if((type === State.ADD || type === State.DELETE) && Array.isArray(target)) {
+    if((type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE) && Array.isArray(target)) {
         dep.get('length')?.forEach(effectFn => {
             if(effectFn !== activeFn) nowBucket.add(effectFn)
         })
