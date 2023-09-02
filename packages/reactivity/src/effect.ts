@@ -20,8 +20,8 @@ export type EffectFn = (() => any) &
  * 是否需要追踪
  */
 export const shouldTrack = {
-    value: true,
-    target: new Set()
+  value: true,
+  target: new Set()
 }
 
 /**
@@ -84,60 +84,60 @@ const cleanup = () => {
  * @returns 
  */
 export const track = (target: object, key: any): void => {
-    if(!activeFn || !shouldTrack.value) return
-    // 找obj
-    let dep = deps.get(target)
-    if(!dep) deps.set(target, (dep = new Map<string | Symbol, Set<EffectFn>>()))
-    let bucket = dep.get(key)
-    if(!bucket) dep.set(key, (bucket = new Set<EffectFn>()))
-    bucket.add(activeFn)
-    // 在这个地方要把当前的bucket添加进函数的dep名单中
-    activeFn.deps.push(bucket)
+  if(!activeFn || !shouldTrack.value) return
+  // 找obj
+  let dep = deps.get(target)
+  if(!dep) deps.set(target, (dep = new Map<string | Symbol, Set<EffectFn>>()))
+  let bucket = dep.get(key)
+  if(!bucket) dep.set(key, (bucket = new Set<EffectFn>()))
+  bucket.add(activeFn)
+  // 在这个地方要把当前的bucket添加进函数的dep名单中
+  activeFn.deps.push(bucket)
 }
 
 // 触发副作用函数
 export const trigger = (target: object, key: any, type = TriggerOpTypes.SET, newValue?: any): void => {
-    // console.log('trigger', key)
-    const dep = deps.get(target)
-    if(!dep) return
-    const bucket = dep.get(key)
-    // if(!bucket) return 改成下面更好
-    // 为了保证当前迭代是准确的(因为底层正在进行删除bucket中对应fn的过程)，复制一份新的bucket集合
-    // 对数组进行处理，当key是length的时候，要判断newValue是是否小于oldValue
-    const nowBucket = new Set<EffectFn>(bucket)
-    if(type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE || target instanceof Map) {
-        dep.get(ITERATE_KEY)?.forEach(effectFn => {
-            if(effectFn !== activeFn) nowBucket.add(effectFn)
-        })
-    }
-    // 取出和keys迭代器相关的值
-    if((type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE) && target instanceof Map) {
-        dep.get(MAP_KEY_ITERATE_KEY)?.forEach(effectFn => {
-            if(effectFn !== activeFn) nowBucket.add(effectFn)
-        })
-    }
-    // 如果是添加属性，那么要吧数组的length相关副作用也添加进来重新执行
-    if((type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE) && Array.isArray(target)) {
-        dep.get('length')?.forEach(effectFn => {
-            if(effectFn !== activeFn) nowBucket.add(effectFn)
-        })
-    }
-    // 如果是更新的数组长度，那么大于数组长度值的被调用都要重新执行
-    if(Array.isArray(target) && key === 'length') {
-        dep.forEach((effects, key) => {
-            if(key >= newValue) {
-                effects.forEach(effectFn => {
-                    if(effectFn !== activeFn) nowBucket.add(effectFn)
-                })
-            }
-        })
-    }
-    nowBucket && nowBucket.forEach(effectFn => {
-        // 如果当前所处副作用函数还需要触发，那就阻止本次操作（也就是在一个函数里既调用了数据又修改了数据）
-        if(effectFn === activeFn) return
-        if(effectFn.options.scheduler) effectFn.options.scheduler(effectFn)
-        else effectFn()
-    })
+  // console.log('trigger', key)
+  const dep = deps.get(target)
+  if(!dep) return
+  const bucket = dep.get(key)
+  // if(!bucket) return 改成下面更好
+  // 为了保证当前迭代是准确的(因为底层正在进行删除bucket中对应fn的过程)，复制一份新的bucket集合
+  // 对数组进行处理，当key是length的时候，要判断newValue是是否小于oldValue
+  const nowBucket = new Set<EffectFn>(bucket)
+  if(type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE || target instanceof Map) {
+      dep.get(ITERATE_KEY)?.forEach(effectFn => {
+          if(effectFn !== activeFn) nowBucket.add(effectFn)
+      })
+  }
+  // 取出和keys迭代器相关的值
+  if((type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE) && target instanceof Map) {
+      dep.get(MAP_KEY_ITERATE_KEY)?.forEach(effectFn => {
+          if(effectFn !== activeFn) nowBucket.add(effectFn)
+      })
+  }
+  // 如果是添加属性，那么要吧数组的length相关副作用也添加进来重新执行
+  if((type === TriggerOpTypes.ADD || type === TriggerOpTypes.DELETE) && Array.isArray(target)) {
+      dep.get('length')?.forEach(effectFn => {
+          if(effectFn !== activeFn) nowBucket.add(effectFn)
+      })
+  }
+  // 如果是更新的数组长度，那么大于数组长度值的被调用都要重新执行
+  if(Array.isArray(target) && key === 'length') {
+      dep.forEach((effects, key) => {
+          if(key >= newValue) {
+              effects.forEach(effectFn => {
+                  if(effectFn !== activeFn) nowBucket.add(effectFn)
+              })
+          }
+      })
+  }
+  nowBucket && nowBucket.forEach(effectFn => {
+    // 如果当前所处副作用函数还需要触发，那就阻止本次操作（也就是在一个函数里既调用了数据又修改了数据）
+    if(effectFn === activeFn) return
+    if(effectFn.options.scheduler) effectFn.options.scheduler(effectFn)
+    else effectFn()
+  })
 }
 
 /**

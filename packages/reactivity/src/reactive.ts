@@ -1,14 +1,11 @@
 /**
  * 这里是数据劫持流程
  */
-// import { activeFn, deps } from './register'
-// import type { EffectFn } from './register'
-// import State, { shouldTrack } from './state'
-// import { arrayInstrumentations } from './array'
-// import { mutableInstrumentations, shallow } from './map'
 import {
   trigger,
-  track
+  track,
+  shouldTrack,
+  activeFn
 } from './effect'
 import { 
   TriggerOpTypes
@@ -26,12 +23,204 @@ export const RAW_KEY = Symbol()
  */
 export const MAP_KEY_ITERATE_KEY = Symbol()
 
+// 重写数组方法
+const arrayInstrumentations: any = {};
+
+['includes', 'lastIndexOf', 'indexOf'].forEach(method => {
+  const originMethod = Array.prototype[method as (keyof typeof Array.prototype)]
+  arrayInstrumentations[method] = function(...arg: any): boolean {
+    let res = originMethod.apply(this, arg)
+    if(res === false) {
+      res = originMethod.apply(this.raw, arg)
+    }
+    return res
+  }
+});
+
+['push','shift', 'unshift', 'pop', 'splice'].forEach(method => {
+  // 也就是调用这些会直接改变length的栈方法的函数，不可以被添加入副作用函数执行名单
+  const originMethod = Array.prototype[method as any]
+  arrayInstrumentations[method] = function(...arg: any): boolean {
+    shouldTrack.value = false
+    // 自己加的，目的是认证禁止追踪的函数是否是本身
+    shouldTrack.target.add(activeFn)
+    let res = originMethod.apply(this, arg)
+    shouldTrack.value = true
+    return res
+  }
+})
+
+// map与set
+let isShallow = false
+export const shallow = {
+  get() {
+    return isShallow
+  },
+  set(value: boolean) {
+    isShallow = value
+  }
+}
+
+export const mutableInstrumentations = {
+  add(key: any) {
+    const target = (this as any)[RAW_KEY]
+    const had = target.has(key)
+    const res = target.add(key)
+    if(!had) {
+      trigger(target, key, TriggerOpTypes.ADD)
+    }
+    return res
+  },
+  set(key: any, value: any) {
+    const target = (this as any)[RAW_KEY]
+    const had = target.has(key)
+    const oldValue = target.get(key)
+    const rawValue = value[RAW_KEY] || value
+    const res = target.set(key, rawValue)
+    if(!had) {
+      trigger(target, key, TriggerOpTypes.ADD)
+    }
+    // 两个值不相等才触发
+    else if(!Object.is(oldValue, value)) {
+      trigger(target, key, TriggerOpTypes.SET)
+    }
+    return res
+  },
+  delete(key: any) {
+    const target = (this as any)[RAW_KEY]
+    const had = target.has(key)
+    const res = target.delete(key)
+    if(had) trigger(target, key, TriggerOpTypes.DELETE)
+    return res
+  },
+  has(key: any) {
+    const target = (this as any)[RAW_KEY]
+    track(target, key)
+    return target.delete(key)
+  },
+  get(key: any) {
+    const target = (this as any)[RAW_KEY]
+    const had = target.has(key)
+    track(target, key)
+    if(had) {
+      const res = target.get(key)
+      return typeof res === 'object' && isShallow ? reactive(res) : res 
+    }
+    return undefined
+  },
+  forEach(cb: any, thisArg: any) {
+    const target = (this as any)[RAW_KEY]
+    const wrap = (res: any) => typeof res === 'object' && isShallow ? reactive(res) : res 
+    track(target, ITERATE_KEY)
+    target.forEach((val: any, key: any) => {
+      cb.call(thisArg, wrap(val), wrap(key), this)
+    })
+  },
+  [Symbol.iterator]() {
+    const target = (this as any)[RAW_KEY]
+    const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+    const iter = target[Symbol.iterator]()
+    track(target, ITERATE_KEY)
+
+    return target instanceof Map ?
+    {
+      next() {
+        const { value, done } = iter.next()
+        return {
+          value: value ? [wrap(value[0]), wrap(value[1])] : value,
+          done
+        }
+      }
+    }
+    :
+    {
+      next() {
+        const { value, done } = iter.next()
+        return {
+          value: value ? wrap(value) : value,
+          done
+        }
+      }
+    }
+  },
+  entries: function() {
+    const target = (this as any)[RAW_KEY]
+    const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+    const iter = target.entries()
+    track(target, ITERATE_KEY)
+
+    return {
+      [Symbol.iterator]() {
+        return {
+          next() {
+            const { value, done } = iter.next()
+            return {
+              value: value ? [wrap(value[0]), wrap(value[1])] : value,
+              done
+            }
+          }
+        }
+      }
+    }
+  },
+  values: function() {
+      const target = (this as any)[RAW_KEY]
+      const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+      const iter = target.values()
+      track(target, ITERATE_KEY)
+
+      return {
+        [Symbol.iterator]() {
+          return {
+            next() {
+              const { value, done } = iter.next()
+              return {
+                value: value ? wrap(value) : value,
+                done
+              }
+            }
+          }
+        }
+      }
+  },
+  keys: function() {
+    const target = (this as any)[RAW_KEY]
+    const wrap = (res: any) => typeof res === 'object' && res !== null && isShallow ? reactive(res) : res
+    const iter = target.keys()
+    track(target, MAP_KEY_ITERATE_KEY)
+
+    return {
+      [Symbol.iterator]() {
+        return {
+          next() {
+            const { value, done } = iter.next()
+            return {
+              value: value ? wrap(value) : value,
+              done
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 生成响应对象收集
+ */
 const deepReactiveMap = new WeakMap<object, object>()
+/**
+ * 为对象添加响应
+ * @param data 数据对象
+ * @param isShallow 是否是浅响应
+ * @param isReadonly 是否是只读
+ * @returns 代理trap对象
+ */
 const createReactive = (data: object, isShallow: boolean = false, isReadonly = false): object => {
-    // 如果有这个reactive的代理函数，那么直接返回
-    // if(deepReactiveMap.has(data)) {
-    //     return deepReactiveMap.get(data) as object
-    // } 
+  // 如果有这个reactive的代理函数，那么直接返回
+  if(deepReactiveMap.has(data)) {
+      return deepReactiveMap.get(data) as object
+  } 
   const proxyObj = new Proxy(data, {
     get(target: object, key: any, receiver: object): object {
       // 忽略读取raw的操作，不需要副作用函数添加进raw的执行名单桶中
@@ -64,6 +253,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
         // 每次都重新生成，那么我们把这个存起来
         return createReactive(res, isShallow, isReadonly)
       }
+      // 原始值或浅响应返回
       return res
     },
     set(target: object, key: any, value: any, receiver: object & {[RAW_KEY]: object}): boolean {
@@ -98,8 +288,8 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
     },
     deleteProperty(target: object, key: string): boolean {
       if(isReadonly) {
-          console.log(`属性${key}为只读`)
-          return true
+        console.log(`属性${key}为只读`)
+        return true
       }
       const has = Reflect.has(target, key)
       const res = Reflect.deleteProperty(target, key)
@@ -107,6 +297,8 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
       return res
     }
   })
+  proxyObj[RAW_KEY] = data
+  // 存储副本
   deepReactiveMap.set(data, proxyObj)
   return proxyObj
 }
