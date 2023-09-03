@@ -19,7 +19,7 @@ export const ITERATE_KEY = Symbol()
  */
 export const RAW_KEY = Symbol()
 /**
- * 用来收集values迭代器锁所调用的值(for in)
+ * 用来收集keys迭代器锁所调用的值(for in)
  */
 export const MAP_KEY_ITERATE_KEY = Symbol()
 
