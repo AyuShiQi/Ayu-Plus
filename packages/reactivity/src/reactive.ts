@@ -36,7 +36,6 @@ const arrayInstrumentations: any = {};
     return res
   }
 });
-
 ['push','shift', 'unshift', 'pop', 'splice'].forEach(method => {
   // 也就是调用这些会直接改变length的栈方法的函数，不可以被添加入副作用函数执行名单
   const originMethod = Array.prototype[method as any]
@@ -60,7 +59,6 @@ export const shallow = {
     isShallow = value
   }
 }
-
 export const mutableInstrumentations = {
   add(key: any) {
     const target = (this as any)[RAW_KEY]
@@ -208,7 +206,7 @@ export const mutableInstrumentations = {
 /**
  * 生成响应对象收集
  */
-const deepReactiveMap = new WeakMap<object, object>()
+const deepReactiveMap = new WeakMap<any, any>()
 /**
  * 为对象添加响应
  * @param data 数据对象
@@ -216,7 +214,7 @@ const deepReactiveMap = new WeakMap<object, object>()
  * @param isReadonly 是否是只读
  * @returns 代理trap对象
  */
-const createReactive = (data: object, isShallow: boolean = false, isReadonly = false): object => {
+const createReactive = (data: object, isShallow: boolean = false, isReadonly = false): any => {
   // 如果有这个reactive的代理函数，那么直接返回
   if(deepReactiveMap.has(data)) {
       return deepReactiveMap.get(data) as object
@@ -304,7 +302,7 @@ const createReactive = (data: object, isShallow: boolean = false, isReadonly = f
 }
 
 // reactive的实现
-export const reactive = (data: object): object => {
+export const reactive = <T>(data: any): T => {
   return createReactive(data)
 }
 
