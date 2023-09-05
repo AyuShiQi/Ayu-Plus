@@ -105,7 +105,8 @@ type VNode = {
   children?: VNode[],
   el: Container,
   parent: Container,
-  props: any
+  props: any,
+  key?: number
 }
 
 export function createRenderer(options: Options) {
@@ -126,9 +127,9 @@ export function createRenderer(options: Options) {
    * @param vnode 虚拟DOM 
    * @param container 挂载容器
    */
-  function render(vnode: VNode,container: Container) {
+  function render(vnode: VNode,container: Container, anchor = null) {
     if(vnode) {
-      patch(container._vnode, vnode, container)
+      patch(container._vnode, vnode, container, anchor)
     } else {
       // 新DOM为null且原来有内容需要取消挂载
       if(container._vnode) {
@@ -144,7 +145,7 @@ export function createRenderer(options: Options) {
    * @param vnode 新虚拟DOM
    * @param container 挂载容器
    */
-  function patch(oldVnode: VNode, vnode: VNode, container: Container) {
+  function patch(oldVnode: VNode, vnode: VNode, container: Container, anchor: Container) {
     // 节点tag类型都不一样肯定不能打补丁，需要重新挂载一个新的
     if(oldVnode.type !== vnode.type) {
       unmount(oldVnode)
@@ -156,7 +157,7 @@ export function createRenderer(options: Options) {
     if(typeof type === 'string') {
       // 没有老虚拟node，直接挂载
       if(!oldVnode) {
-        mountElement(vnode, container)
+        mountElement(vnode, container, anchor)
       } else {
         // diff算法入口
         patchElement(oldVnode, vnode)
@@ -216,10 +217,10 @@ export function createRenderer(options: Options) {
     } else if(Array.isArray(newVnode.children)) {
       if(Array.isArray(oldVnode.children)) {
         // diff算法入口！！！
-        diff(oldVnode, newVnode)
+        sampleDiff(oldVnode, newVnode, el)
       } else {
         setElementText(el, '')
-        newVnode.children.forEach((child: any) => patch(null, child, el))
+        newVnode.children.forEach((child: any) => patch(null, child, el, null))
       }
     // 代表新节点为null
     } else {
@@ -234,13 +235,13 @@ export function createRenderer(options: Options) {
    * @param vnode 虚拟DOM 
    * @param container 挂载容器
    */
-  function mountElement(vnode: VNode, container: Container) {
+  function mountElement(vnode: VNode, container: Container, anchor: Container) {
     const el = vnode.el = createElement(vnode.type) as unknown as Container
     if(typeof vnode.children === 'string') {
       setElementText(el, vnode.children)
     } else if(Array.isArray(vnode.children)) {
       vnode.children.forEach((child: any) => {
-        patch(null, child, el)
+        patch(null, child, el, null)
       })
     }
     if(vnode.props) {
@@ -249,11 +250,147 @@ export function createRenderer(options: Options) {
       }
     }
     // 插入操作
-    insert(el, container)
+    insert(el, container, anchor)
   }
 
-  function diff (n1: VNode, n2: VNode) {
+  /**
+   * 简单diff算法
+   * @param n1 老dom
+   * @param n2 新dom
+   * @param container 容器 
+   */
+  function sampleDiff (n1: VNode, n2: VNode, container: Container) {
+    const oldChildren = n1.children
+    const newChildren = n2.children
+    // 遍历新dom
+    let lastIndex = 0
+    for (let i = 0; i < newChildren.length; i++) {
+      const newNode = newChildren[i]
+      // 记录是否找到key相同的节点
+      let flag = false
+      for (let j = 0; j < oldChildren.length; j++) {
+        const oldNode = oldChildren[j]
+        if (oldNode.key === newNode.key) {
+          patch(oldNode, newNode, container, null)
+          flag = true
 
+          // 说明要移动位置
+          if (j < lastIndex) {
+            const preNode = newChildren[i - 1]
+            if (preNode) {
+              const anchor = preNode.el.nextSibling
+              insert(preNode.el, container, anchor)
+            }
+          } else {
+            lastIndex = j
+          }
+          break
+        }
+      }
+
+      // 说明没找到
+      if (!flag) {
+        const preNode = newChildren[i - 1]
+        let anchor = null
+        if (preNode) {
+          anchor = preNode.el.nextSibling
+        // 说明是第一个节点
+        } else {
+          anchor = container.firstChild
+        }
+        patch(null, newNode, container, anchor)
+      }
+    }
+
+    // 卸载旧的不用节点
+    for (let i = 0; i < oldChildren.length; i++) {
+      const oldNode = oldChildren[i]
+      // 记录是否找到key相同的节点
+      let flag = newChildren.find(vnode => vnode.key === oldNode.key)
+
+      if (!flag) {
+        unmount(oldNode)
+      }
+    }
+  }
+
+  /**
+   * 双端diff算法
+   * @param n1 老dom
+   * @param n2 新dom
+   * @param container 容器 
+   */
+  function patchKeyedChildren2 (n1: VNode, n2: VNode, container: Container) {
+    const oldChildren = n1.children
+    const newChildren = n2.children
+    // 索引值
+    let oldStartIdx = 0
+    let oldEndIdx = oldChildren.length - 1
+    let newStartIdx = 0
+    let newEndIdx = newChildren.length - 1
+
+    let oldStartVNode = oldChildren[oldStartIdx]
+    let oldEndVNode = oldChildren[oldEndIdx]
+    let newStartVNode = newChildren[newStartIdx]
+    let newEndVNode = newChildren[oldStartIdx]
+
+    while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+      if (oldStartVNode.key === newStartVNode.key) {
+        patch(oldStartVNode, newStartVNode, container, null)
+        oldStartVNode = oldChildren[++oldStartIdx]
+        newStartVNode = newChildren[++newStartIdx]
+      } else if (oldEndVNode.key === newEndVNode.key) {
+        patch(oldEndVNode, newEndVNode, container, null)
+        oldEndVNode = oldChildren[--oldEndIdx]
+        newEndVNode = newChildren[--newEndIdx]
+      } else if (oldStartVNode.key === newEndVNode.key) {
+        patch(oldStartVNode, newEndVNode, container, null)
+        insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
+        oldStartVNode = oldChildren[++oldStartIdx]
+        newEndVNode = newChildren[--newEndIdx]
+      } else if (oldEndVNode.key === newStartVNode.key) {
+        patch(oldEndVNode, newStartVNode, container, null)
+        insert(oldEndVNode.el, container, oldStartVNode.el)
+        newStartVNode = newChildren[++newStartIdx]
+        oldEndVNode = oldChildren[--oldEndIdx]
+      } else {
+        const idxInOld = oldChildren.findIndex(vnode => vnode.key === newStartVNode.key)
+
+        if (idxInOld > 0) {
+          const vnodeToMove = oldChildren[idxInOld]
+          patch(vnodeToMove, newStartVNode, container, null)
+          insert(vnodeToMove.el, container, oldStartVNode.el)
+          oldChildren[idxInOld] = undefined
+        // 没有找到
+        } else {
+          patch(null, newStartVNode, container, null)
+        }
+        newStartVNode = newStartVNode[++newStartIdx]
+      }
+    }
+
+    if (oldEndIdx < oldStartIdx && newStartIdx <= newEndIdx) {
+      for (let i = newStartIdx; i <= newEndIdx; i++) {
+        patch(null, newChildren[i], container, oldStartVNode.el)
+      }
+    } else if (oldEndIdx < newStartIdx && oldStartIdx <= oldEndIdx) {
+      for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+        unmount(oldChildren[i])
+      }
+    }
+  }
+
+  /**
+   * 快速diff算法
+   * @param n1 老dom
+   * @param n2 新dom
+   * @param container 容器 
+   */
+  function patchKeyedChildren3 (n1: VNode, n2: VNode, container: Container) {
+    const oldChildren = n1.children
+    const newChildren = n2.children
+
+    
   }
 
   return {
