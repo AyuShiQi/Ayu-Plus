@@ -1,5 +1,6 @@
 import { Text, Comment } from './type'
-import { normalizeClass } from 'packages/shared/src/className'
+import { normalizeClass } from '@ayu-plus/shared'
+import { lis } from '@ayu-plus/shared'
 
 const browserOptions = {
   /**
@@ -145,7 +146,7 @@ export function createRenderer(options: Options) {
    * @param vnode 新虚拟DOM
    * @param container 挂载容器
    */
-  function patch(oldVnode: VNode, vnode: VNode, container: Container, anchor: Container) {
+  function patch(oldVnode: VNode, vnode: VNode, container: Container, anchor: Container = null) {
     // 节点tag类型都不一样肯定不能打补丁，需要重新挂载一个新的
     if(oldVnode.type !== vnode.type) {
       unmount(oldVnode)
@@ -166,7 +167,7 @@ export function createRenderer(options: Options) {
     } else if (type === Text) {
       if(!oldVnode) {
         const el = vnode.el = createText(vnode.children as unknown as string) as unknown as Container
-        insert(el, container)
+        insert(el, container, anchor)
       } else {
         const el = vnode.el = oldVnode.el
         if (vnode.children !== oldVnode.children) {
@@ -177,7 +178,7 @@ export function createRenderer(options: Options) {
     } else if (type === Comment) {
       if(!oldVnode) {
         const el = vnode.el = createComment(vnode.children as unknown as string) as unknown as Container
-        insert(el, container)
+        insert(el, container, anchor)
       } else {
         const el = vnode.el = oldVnode.el
         if (vnode.children !== oldVnode.children) {
@@ -199,6 +200,7 @@ export function createRenderer(options: Options) {
         patchProps(el, key, oldProps[key], newProps[key])
       }
     }
+    // 卸载老props
     for(const key in oldProps) {
       if(!(key in newProps)) {
         patchProps(el, key, oldProps[key], null)
@@ -217,10 +219,11 @@ export function createRenderer(options: Options) {
     } else if(Array.isArray(newVnode.children)) {
       if(Array.isArray(oldVnode.children)) {
         // diff算法入口！！！
-        sampleDiff(oldVnode, newVnode, el)
+        // sampleDiff(oldVnode, newVnode, el)
+        patchKeyedChildren3(oldVnode, newVnode, el)
       } else {
         setElementText(el, '')
-        newVnode.children.forEach((child: any) => patch(null, child, el, null))
+        newVnode.children.forEach((child: any) => patch(null, child, el))
       }
     // 代表新节点为null
     } else {
@@ -241,7 +244,7 @@ export function createRenderer(options: Options) {
       setElementText(el, vnode.children)
     } else if(Array.isArray(vnode.children)) {
       vnode.children.forEach((child: any) => {
-        patch(null, child, el, null)
+        patch(null, child, el)
       })
     }
     if(vnode.props) {
@@ -336,20 +339,20 @@ export function createRenderer(options: Options) {
 
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
       if (oldStartVNode.key === newStartVNode.key) {
-        patch(oldStartVNode, newStartVNode, container, null)
+        patch(oldStartVNode, newStartVNode, container)
         oldStartVNode = oldChildren[++oldStartIdx]
         newStartVNode = newChildren[++newStartIdx]
       } else if (oldEndVNode.key === newEndVNode.key) {
-        patch(oldEndVNode, newEndVNode, container, null)
+        patch(oldEndVNode, newEndVNode, container)
         oldEndVNode = oldChildren[--oldEndIdx]
         newEndVNode = newChildren[--newEndIdx]
       } else if (oldStartVNode.key === newEndVNode.key) {
-        patch(oldStartVNode, newEndVNode, container, null)
+        patch(oldStartVNode, newEndVNode, container)
         insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
         oldStartVNode = oldChildren[++oldStartIdx]
         newEndVNode = newChildren[--newEndIdx]
       } else if (oldEndVNode.key === newStartVNode.key) {
-        patch(oldEndVNode, newStartVNode, container, null)
+        patch(oldEndVNode, newStartVNode, container)
         insert(oldEndVNode.el, container, oldStartVNode.el)
         newStartVNode = newChildren[++newStartIdx]
         oldEndVNode = oldChildren[--oldEndIdx]
@@ -358,12 +361,12 @@ export function createRenderer(options: Options) {
 
         if (idxInOld > 0) {
           const vnodeToMove = oldChildren[idxInOld]
-          patch(vnodeToMove, newStartVNode, container, null)
+          patch(vnodeToMove, newStartVNode, container)
           insert(vnodeToMove.el, container, oldStartVNode.el)
           oldChildren[idxInOld] = undefined
         // 没有找到
         } else {
-          patch(null, newStartVNode, container, null)
+          patch(null, newStartVNode, container)
         }
         newStartVNode = newStartVNode[++newStartIdx]
       }
@@ -390,7 +393,127 @@ export function createRenderer(options: Options) {
     const oldChildren = n1.children
     const newChildren = n2.children
 
-    
+    // 前置预处理
+    let j = 0
+    let oldVNode = oldChildren[j]
+    let newVNode = newChildren[j]
+
+    while (oldVNode.key === newVNode.key) {
+      patch(oldVNode, newVNode, container)
+      j++
+      oldVNode = oldChildren[j]
+      newVNode = newChildren[j]
+    }
+
+    // 后置预处理
+    let oldEnd = oldChildren.length - 1
+    let newEnd = newChildren.length - 1
+
+    oldVNode = oldChildren[oldEnd]
+    newVNode = newChildren[newEnd]
+
+    while (oldVNode.key === newVNode.key) {
+      patch(oldVNode, newVNode, container)
+      oldVNode = oldChildren[--oldEnd]
+      newVNode = newChildren[--newEnd]
+    }
+
+    // 预处理最后判断
+    // 说明有需要挂载的新节点
+    if (j > oldEnd && j <= newEnd) {
+      const anchorIndex = newEnd - 1
+      const anchor = anchorIndex < newChildren.length ? newChildren[anchorIndex].el : null
+      while (j <= newEnd) {
+        patch(null, newChildren[j++], container, anchor)
+      }
+    } else if (j <= oldEnd && j > newEnd) {
+      while (j <= oldEnd) {
+        unmount(oldChildren[j++])
+      }
+    // 还需要diff
+    } else {
+      const count = newEnd - j + 1
+      const sources = new Array(count).fill(-1)
+
+      const oldStart = j
+      const newStart = j
+
+      // 双层循环，性能代价大
+      // for (let i = oldStart; i <= oldEnd; i++) {
+      //   const oldVNode = oldChildren[i]
+      //   for (let k = newStart; k <= newEnd; k++) {
+      //     const newVNode = newChildren[k]
+      //     if (oldVNode.key === newVNode.key) {
+      //       patch(oldVNode, newVNode, container)
+      //       source[k - newStart] = i
+      //     }
+      //   }
+      // }
+
+      const keyIndex = {}
+      // 构建索引表
+      for (let i = newStart; i <= newEnd; i++) {
+        keyIndex[newChildren[i].key] = i
+      }
+
+      // 节点是否需要移动
+      let moved = false
+      // 当前最大索引
+      let pos = 0
+      // 已经更新过的节点
+      let patched = 0
+
+      for (let i = oldStart; i <= oldEnd; i++) {
+        // 说明还没有更新完节点
+        if (patched <= count) {
+          const oldVNode = oldChildren[i]
+          const k = keyIndex[oldVNode.key]
+          // 说明该节点存在
+          if (k) {
+            const newVNode = newChildren[k]
+            patched++
+            patch(oldVNode, newVNode, container)
+            sources[k - newStart] = i
+
+            if (k < pos) {
+              moved = true
+            } else {
+              pos = k
+            }
+          } else {
+            unmount(oldVNode)
+          }
+        } else {
+          unmount(oldVNode)
+        }
+      }
+      // 说明还有节点没有适配，快速diff开始
+      if (moved) {
+        // 最长上升子序列
+        const seq = lis(sources)
+
+        // 记录最长递增子序列最后一个元素
+        let s = seq.length - 1
+        // i初始指向新子节点最后一个元素
+        for (let i = count - 1; i >=0 ; i--) {
+          // 新节点需要挂载
+          if (sources[i] === -1) {
+            const pos = i + newStart
+            const newVNode = newChildren[pos]
+            const anchor = pos + 1 < newChildren.length ? newChildren[pos + 1].el : null
+            patch(null, newVNode, container, anchor)
+          // 需要移动 
+          } else if (seq[s] !== i) {
+            const pos = i + newStart
+            const newVNode = newChildren[pos]
+            const anchor = pos + 1 < newChildren.length ? newChildren[pos + 1].el : null
+            insert(newVNode.el, container, anchor)
+          } else {
+            s--
+          }
+        }
+      }
+    }
   }
 
   return {
@@ -405,4 +528,7 @@ function shouldSetAsProps(el: any, key: any): boolean {
   return key in el
 }
 
-const render = createRenderer(browserOptions)
+/**
+ * 这个是DOM渲染
+ */
+export const render = createRenderer(browserOptions)
