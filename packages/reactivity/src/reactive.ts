@@ -10,18 +10,12 @@ import {
 import { 
   TriggerOpTypes
 } from './operations'
-/**
- * 用来标记某个对象的获取key操作属性，用来标记获取key操作的副作用函数
- */
-export const ITERATE_KEY = Symbol()
-/**
- * 用于标记一个代理对象的原型
- */
-export const RAW_KEY = Symbol()
-/**
- * 用来收集keys迭代器锁所调用的值(for in)
- */
-export const MAP_KEY_ITERATE_KEY = Symbol()
+
+import {
+  MAP_KEY_ITERATE_KEY,
+  ITERATE_KEY,
+  RAW_KEY
+} from './operations'
 
 // 重写数组方法
 const arrayInstrumentations: any = {};

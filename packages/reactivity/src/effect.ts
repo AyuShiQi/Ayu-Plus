@@ -1,8 +1,7 @@
 /**
  * 这里是函数的注册流程
  **/
-import { TriggerOpTypes } from './operations'
-import { ITERATE_KEY, MAP_KEY_ITERATE_KEY } from './reactive'
+import { TriggerOpTypes, ITERATE_KEY, MAP_KEY_ITERATE_KEY } from './operations'
 
 // ts类型
 export type ActiveFn = ((...props: unknown[]) => any)

@@ -11,6 +11,7 @@ const browserOptions = {
  * @param nextValue 新值
  */
   patchProps(el: Container, key: string, prevValue: any, nextValue: any) {
+    prevValue
     // 说明是一个事件onXxx
     if(/^on/.test(key)) {
       const invokers = el._vei || (el._vei = {})
@@ -262,60 +263,60 @@ export function createRenderer(options: Options) {
    * @param n2 新dom
    * @param container 容器 
    */
-  function sampleDiff (n1: VNode, n2: VNode, container: Container) {
-    const oldChildren = n1.children
-    const newChildren = n2.children
-    // 遍历新dom
-    let lastIndex = 0
-    for (let i = 0; i < newChildren.length; i++) {
-      const newNode = newChildren[i]
-      // 记录是否找到key相同的节点
-      let flag = false
-      for (let j = 0; j < oldChildren.length; j++) {
-        const oldNode = oldChildren[j]
-        if (oldNode.key === newNode.key) {
-          patch(oldNode, newNode, container, null)
-          flag = true
+  // function sampleDiff (n1: VNode, n2: VNode, container: Container) {
+  //   const oldChildren = n1.children
+  //   const newChildren = n2.children
+  //   // 遍历新dom
+  //   let lastIndex = 0
+  //   for (let i = 0; i < newChildren.length; i++) {
+  //     const newNode = newChildren[i]
+  //     // 记录是否找到key相同的节点
+  //     let flag = false
+  //     for (let j = 0; j < oldChildren.length; j++) {
+  //       const oldNode = oldChildren[j]
+  //       if (oldNode.key === newNode.key) {
+  //         patch(oldNode, newNode, container, null)
+  //         flag = true
 
-          // 说明要移动位置
-          if (j < lastIndex) {
-            const preNode = newChildren[i - 1]
-            if (preNode) {
-              const anchor = preNode.el.nextSibling
-              insert(preNode.el, container, anchor)
-            }
-          } else {
-            lastIndex = j
-          }
-          break
-        }
-      }
+  //         // 说明要移动位置
+  //         if (j < lastIndex) {
+  //           const preNode = newChildren[i - 1]
+  //           if (preNode) {
+  //             const anchor = preNode.el.nextSibling
+  //             insert(preNode.el, container, anchor)
+  //           }
+  //         } else {
+  //           lastIndex = j
+  //         }
+  //         break
+  //       }
+  //     }
 
-      // 说明没找到
-      if (!flag) {
-        const preNode = newChildren[i - 1]
-        let anchor = null
-        if (preNode) {
-          anchor = preNode.el.nextSibling
-        // 说明是第一个节点
-        } else {
-          anchor = container.firstChild
-        }
-        patch(null, newNode, container, anchor)
-      }
-    }
+  //     // 说明没找到
+  //     if (!flag) {
+  //       const preNode = newChildren[i - 1]
+  //       let anchor = null
+  //       if (preNode) {
+  //         anchor = preNode.el.nextSibling
+  //       // 说明是第一个节点
+  //       } else {
+  //         anchor = container.firstChild
+  //       }
+  //       patch(null, newNode, container, anchor)
+  //     }
+  //   }
 
-    // 卸载旧的不用节点
-    for (let i = 0; i < oldChildren.length; i++) {
-      const oldNode = oldChildren[i]
-      // 记录是否找到key相同的节点
-      let flag = newChildren.find(vnode => vnode.key === oldNode.key)
+  //   // 卸载旧的不用节点
+  //   for (let i = 0; i < oldChildren.length; i++) {
+  //     const oldNode = oldChildren[i]
+  //     // 记录是否找到key相同的节点
+  //     let flag = newChildren.find(vnode => vnode.key === oldNode.key)
 
-      if (!flag) {
-        unmount(oldNode)
-      }
-    }
-  }
+  //     if (!flag) {
+  //       unmount(oldNode)
+  //     }
+  //   }
+  // }
 
   /**
    * 双端diff算法
@@ -323,65 +324,65 @@ export function createRenderer(options: Options) {
    * @param n2 新dom
    * @param container 容器 
    */
-  function patchKeyedChildren2 (n1: VNode, n2: VNode, container: Container) {
-    const oldChildren = n1.children
-    const newChildren = n2.children
-    // 索引值
-    let oldStartIdx = 0
-    let oldEndIdx = oldChildren.length - 1
-    let newStartIdx = 0
-    let newEndIdx = newChildren.length - 1
+  // function patchKeyedChildren2 (n1: VNode, n2: VNode, container: Container) {
+  //   const oldChildren = n1.children
+  //   const newChildren = n2.children
+  //   // 索引值
+  //   let oldStartIdx = 0
+  //   let oldEndIdx = oldChildren.length - 1
+  //   let newStartIdx = 0
+  //   let newEndIdx = newChildren.length - 1
 
-    let oldStartVNode = oldChildren[oldStartIdx]
-    let oldEndVNode = oldChildren[oldEndIdx]
-    let newStartVNode = newChildren[newStartIdx]
-    let newEndVNode = newChildren[oldStartIdx]
+  //   let oldStartVNode = oldChildren[oldStartIdx]
+  //   let oldEndVNode = oldChildren[oldEndIdx]
+  //   let newStartVNode = newChildren[newStartIdx]
+  //   let newEndVNode = newChildren[oldStartIdx]
 
-    while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-      if (oldStartVNode.key === newStartVNode.key) {
-        patch(oldStartVNode, newStartVNode, container)
-        oldStartVNode = oldChildren[++oldStartIdx]
-        newStartVNode = newChildren[++newStartIdx]
-      } else if (oldEndVNode.key === newEndVNode.key) {
-        patch(oldEndVNode, newEndVNode, container)
-        oldEndVNode = oldChildren[--oldEndIdx]
-        newEndVNode = newChildren[--newEndIdx]
-      } else if (oldStartVNode.key === newEndVNode.key) {
-        patch(oldStartVNode, newEndVNode, container)
-        insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
-        oldStartVNode = oldChildren[++oldStartIdx]
-        newEndVNode = newChildren[--newEndIdx]
-      } else if (oldEndVNode.key === newStartVNode.key) {
-        patch(oldEndVNode, newStartVNode, container)
-        insert(oldEndVNode.el, container, oldStartVNode.el)
-        newStartVNode = newChildren[++newStartIdx]
-        oldEndVNode = oldChildren[--oldEndIdx]
-      } else {
-        const idxInOld = oldChildren.findIndex(vnode => vnode.key === newStartVNode.key)
+  //   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+  //     if (oldStartVNode.key === newStartVNode.key) {
+  //       patch(oldStartVNode, newStartVNode, container)
+  //       oldStartVNode = oldChildren[++oldStartIdx]
+  //       newStartVNode = newChildren[++newStartIdx]
+  //     } else if (oldEndVNode.key === newEndVNode.key) {
+  //       patch(oldEndVNode, newEndVNode, container)
+  //       oldEndVNode = oldChildren[--oldEndIdx]
+  //       newEndVNode = newChildren[--newEndIdx]
+  //     } else if (oldStartVNode.key === newEndVNode.key) {
+  //       patch(oldStartVNode, newEndVNode, container)
+  //       insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
+  //       oldStartVNode = oldChildren[++oldStartIdx]
+  //       newEndVNode = newChildren[--newEndIdx]
+  //     } else if (oldEndVNode.key === newStartVNode.key) {
+  //       patch(oldEndVNode, newStartVNode, container)
+  //       insert(oldEndVNode.el, container, oldStartVNode.el)
+  //       newStartVNode = newChildren[++newStartIdx]
+  //       oldEndVNode = oldChildren[--oldEndIdx]
+  //     } else {
+  //       const idxInOld = oldChildren.findIndex(vnode => vnode.key === newStartVNode.key)
 
-        if (idxInOld > 0) {
-          const vnodeToMove = oldChildren[idxInOld]
-          patch(vnodeToMove, newStartVNode, container)
-          insert(vnodeToMove.el, container, oldStartVNode.el)
-          oldChildren[idxInOld] = undefined
-        // 没有找到
-        } else {
-          patch(null, newStartVNode, container)
-        }
-        newStartVNode = newStartVNode[++newStartIdx]
-      }
-    }
+  //       if (idxInOld > 0) {
+  //         const vnodeToMove = oldChildren[idxInOld]
+  //         patch(vnodeToMove, newStartVNode, container)
+  //         insert(vnodeToMove.el, container, oldStartVNode.el)
+  //         oldChildren[idxInOld] = undefined
+  //       // 没有找到
+  //       } else {
+  //         patch(null, newStartVNode, container)
+  //       }
+  //       newStartVNode = newStartVNode[++newStartIdx]
+  //     }
+  //   }
 
-    if (oldEndIdx < oldStartIdx && newStartIdx <= newEndIdx) {
-      for (let i = newStartIdx; i <= newEndIdx; i++) {
-        patch(null, newChildren[i], container, oldStartVNode.el)
-      }
-    } else if (oldEndIdx < newStartIdx && oldStartIdx <= oldEndIdx) {
-      for (let i = oldStartIdx; i <= oldEndIdx; i++) {
-        unmount(oldChildren[i])
-      }
-    }
-  }
+  //   if (oldEndIdx < oldStartIdx && newStartIdx <= newEndIdx) {
+  //     for (let i = newStartIdx; i <= newEndIdx; i++) {
+  //       patch(null, newChildren[i], container, oldStartVNode.el)
+  //     }
+  //   } else if (oldEndIdx < newStartIdx && oldStartIdx <= oldEndIdx) {
+  //     for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+  //       unmount(oldChildren[i])
+  //     }
+  //   }
+  // }
 
   /**
    * 快速diff算法

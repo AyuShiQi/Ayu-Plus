@@ -1,0 +1,16 @@
+{
+    "name": "@ayu-plus/renderer",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "buildOptions": {
+      "name": "AyuRenderer",
+      "formats": [
+        "esm-bundler",
+        "esm-browser",
+        "cjs",
+        "global"
+      ]
+    }
+  }
+  
