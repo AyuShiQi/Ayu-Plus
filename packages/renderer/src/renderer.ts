@@ -1,6 +1,11 @@
-import { Text, Comment } from './type'
+import { 
+  Text,
+  Comment,
+  lis,
+  type VNode,
+  type Container
+} from '@ayu-plus/shared'
 import { normalizeClass } from '@ayu-plus/shared'
-import { lis } from '@ayu-plus/shared'
 
 const browserOptions = {
   /**
@@ -96,20 +101,6 @@ const browserOptions = {
 }
 
 type Options = typeof browserOptions
-
-type Container = Element & {
-  _vnode: any,
-  _vei: any
-}
-
-type VNode = {
-  type: any,
-  children?: VNode[],
-  el: Container,
-  parent: Container,
-  props: any,
-  key?: number
-}
 
 export function createRenderer(options: Options) {
   const {
