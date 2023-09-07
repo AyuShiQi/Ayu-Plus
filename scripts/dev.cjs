@@ -3,7 +3,7 @@ const fs = require('fs')
 import('execa').then(({ execa }) => {
   const dirs = fs.readdirSync('packages').filter(p => {
     // 该文件是否为文件夹
-    return fs.statSync(`packages/${p}`).isDirectory()
+    return fs.statSync(`packages/${p}`).isDirectory() && (p === 'dom-complier' || p === 'ayu-core')
   })
   
   console.log(dirs)
@@ -14,7 +14,7 @@ import('execa').then(({ execa }) => {
    */
   async function build (target) {
     // 执行rollup配置，第二个参数为环境变量,第三个配置（将子进程信息输出在父包）
-    await execa('rollup', ['-cw', '--environment', `TARGET:${target}`], { stdio: 'inherit' })
+    await execa('rollup', ['-c', '--environment', `TARGET:${target}`], { stdio: 'inherit' })
   }
   
   // 全部文件并行打包

@@ -16,3 +16,7 @@ export {
 export {
   parse
 } from '@ayu-plus/dom-complier'
+
+export {
+  createApp
+} from './createApp'

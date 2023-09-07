@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.cjs",
+    "dev": "node scripts/dev.cjs",
     "node": "node scripts/dev.cjs"
   },
   "devDependencies": {

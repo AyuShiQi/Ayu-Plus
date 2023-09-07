@@ -1,6 +1,7 @@
 import { 
   Text,
   Comment,
+  Fragment,
   lis,
   type VNode,
   type Container
@@ -140,7 +141,7 @@ export function createRenderer(options: Options) {
    */
   function patch(oldVnode: VNode, vnode: VNode, container: Container, anchor: Container = null) {
     // 节点tag类型都不一样肯定不能打补丁，需要重新挂载一个新的
-    if(oldVnode.type !== vnode.type) {
+    if(oldVnode && oldVnode.type !== vnode.type) {
       unmount(oldVnode)
       // 以便后续重新挂载操作
       oldVnode = null
@@ -177,8 +178,12 @@ export function createRenderer(options: Options) {
           setComment(el, vnode.children as unknown as string)
         }
       }
-    } else if (typeof type === 'object') {
-      // 说明是个组件
+    } else if (type === Fragment) {
+      vnode.children.forEach(child => {
+        patch(child.el._vnode, child, container)
+      })
+    } else if (type === 'object') {
+      // 说明是个组件，暂时解决一下
     }
   }
 
