@@ -11,9 +11,15 @@ import { ref } from '../packages/ayu-core/dist/ayu-core.esm-browser.js'
 createApp({
   el: '#app',
   setup () {
-    const a = ref(0)
+    const a = ref(1)
+
+    function handleClick () {
+      a.value = a.value + 1
+    }
+
     return {
-      a
+      a,
+      handleClick
     }
   }
 })

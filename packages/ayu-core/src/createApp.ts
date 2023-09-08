@@ -1,7 +1,7 @@
-import { parse } from "./index"
+import { parse } from "@ayu-plus/dom-complier"
 import { render } from '@ayu-plus/renderer'
 import { showWarning } from "./warning"
-import { toRefs } from "@ayu-plus/ayu-core"
+import { proxyRefs } from "@ayu-plus/reactivity"
 
 type Option = {
   el: string | Element,
@@ -23,7 +23,7 @@ export function createApp ({ el, template, setup }: Option) {
     template = String(el.innerHTML)
   }
 
-  const proxy = toRefs(setup())
+  const proxy = proxyRefs(setup())
   
   console.log(proxy)
 
