@@ -51,6 +51,7 @@ export const toRefs = (obj: any) => {
 export const proxyRefs = (target: any) => {
   return new Proxy(target, {
     get(target: any, key: string, receiver: any) {
+      // console.log(target, key)
       if (key as any === Symbol.unscopables) return undefined
       const value = Reflect.get(target, key, receiver)
       return value.__v_isRef ? value.value : value

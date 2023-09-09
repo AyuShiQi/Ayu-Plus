@@ -18,6 +18,7 @@ const browserOptions = {
  */
   patchProps(el: Container, key: string, prevValue: any, nextValue: any) {
     prevValue
+    console.log(el, key, prevValue)
     // 说明是一个事件onXxx
     if(/^on/.test(key)) {
       const invokers = el._vei || (el._vei = {})
@@ -49,6 +50,8 @@ const browserOptions = {
     } else if(key === 'class') {
       el.className = nextValue ? normalizeClass(nextValue) : ''
       // DOM properties存在这个属性
+    } else if (key === 'style') {
+      el.setAttribute(key, nextValue)
     } else if(shouldSetAsProps(el, key)) {
       const type = typeof el[key]
       if(type === 'boolean' && nextValue === '') {

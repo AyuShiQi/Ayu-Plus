@@ -12,14 +12,22 @@ createApp({
   el: '#app',
   setup () {
     const a = ref(1)
+    const value = ref('')
 
     function handleClick () {
+      console.log('ok')
       a.value = a.value + 1
+    }
+
+    function handleClick2 () {
+      value.value = 'Nihaoya'
     }
 
     return {
       a,
-      handleClick
+      value,
+      handleClick,
+      handleClick2
     }
   }
 })
